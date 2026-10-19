@@ -41,6 +41,15 @@ ifr.src = 'https://script.google.com/macros/s/AKfycbzNnu1UctMaM-4-pzrzjoOdDUrZjQ
 ifr.onload = function () { fit(); var w = document.getElementById('wait'); w.style.opacity = 0; setTimeout(function () { w.remove(); }, 400); };
 window.addEventListener('resize', fit); window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
 setTimeout(fit, 300);
+// Запомненный вход хранит обёртка: внутри iframe iPhone не даёт приложению своё хранилище
+window.addEventListener('message', function (e) {
+  if (!/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin) || !e.data || e.data.k1 !== 1) return;
+  try {
+    if (e.data.op === 'get') e.source.postMessage({ k1: 1, op: 'cred', v: JSON.parse(localStorage.getItem('k1cred') || 'null') }, e.origin);
+    else if (e.data.op === 'set') localStorage.setItem('k1cred', JSON.stringify(e.data.v));
+    else if (e.data.op === 'clear') localStorage.removeItem('k1cred');
+  } catch (err) {}
+});
 </script>
 </body>
 </html>
