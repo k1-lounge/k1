@@ -52,6 +52,7 @@ window.addEventListener('message', function (e) {
     if (e.data.op === 'get') e.source.postMessage({ k1: 1, op: 'cred', v: JSON.parse(localStorage.getItem('k1cred') || 'null') }, e.origin);
     else if (e.data.op === 'set') localStorage.setItem('k1cred', JSON.stringify(e.data.v));
     else if (e.data.op === 'clear') localStorage.removeItem('k1cred');
+    else if (e.data.op === 'reload') setTimeout(function () { location.reload(); }, 150);
   } catch (err) {}
 });
 </script>
