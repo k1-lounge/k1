@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>K1 hookah lounge</title>
-<meta name="theme-color" content="#181818">
+<meta name="theme-color" content="#1e1e1e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="K1">
@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="manifest" href="manifest.json">
 <style>
-html,body{margin:0;height:100%;background:#181818;overflow:hidden}
+html,body{margin:0;height:100%;background:#1e1e1e;overflow:hidden}
 iframe{position:fixed;left:0;top:env(safe-area-inset-top,0px);width:100%;height:100%;border:0;display:block;background:#181818}
 #safe{position:fixed;top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);left:0;right:0;visibility:hidden;pointer-events:none}
 .wait{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#d2cdbf;font:15px -apple-system,system-ui,sans-serif;pointer-events:none;transition:opacity .3s}
@@ -28,18 +28,23 @@ iframe{position:fixed;left:0;top:env(safe-area-inset-top,0px);width:100%;height:
 <script>
 // iPhone с иконки: приложение ставим ниже часов/«брови» и растягиваем на видимую высоту.
 var ifr = document.getElementById('app'), safe = document.getElementById('safe');
-function fit() {
-  var t = Math.max(0, Math.round(safe.getBoundingClientRect().top));
-  var H = window.innerHeight;   // только видимая часть: всё, что ниже, iPhone обрезает (не было видно кнопок в окнах)
-  ifr.style.top = t + 'px'; ifr.style.height = (H - t) + 'px';
-  return t;
-}
-var top0 = fit();
-var sb = navigator.standalone && top0 > 20 ? 34 : Math.max(0, Math.round(window.innerHeight - safe.getBoundingClientRect().bottom));
-ifr.src = 'https://script.google.com/macros/s/AKfycbzNnu1UctMaM-4-pzrzjoOdDUrZjQAzf22vXoosDZeilK6izq5mPDH9bAw3vqiNGPz7/exec?st=0&sb=' + sb;
+// Приложение на всю видимую высоту, фон уходит под часы; отступ под «бровь» приложение делает само (?st=)
+function fit() { ifr.style.top = '0px'; ifr.style.height = window.innerHeight + 'px'; }
+fit();
+var st = Math.max(0, Math.round(safe.getBoundingClientRect().top));
+ifr.src = 'https://script.google.com/macros/s/AKfycbzNnu1UctMaM-4-pzrzjoOdDUrZjQAzf22vXoosDZeilK6izq5mPDH9bAw3vqiNGPz7/exec?st=' + st + '&sb=0';
 ifr.onload = function () { fit(); var w = document.getElementById('wait'); w.style.opacity = 0; setTimeout(function () { w.remove(); }, 400); };
 window.addEventListener('resize', fit); window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
-setTimeout(fit, 300);
+// временно: замеры экрана для настройки (видны 10 секунд внизу)
+(function () {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:9;font:11px -apple-system;color:#ffd23f;background:rgba(0,0,0,.7);padding:6px;border-radius:8px;pointer-events:none';
+  setTimeout(function () {
+    var r = safe.getBoundingClientRect(), vv = window.visualViewport;
+    d.textContent = 'ih ' + innerHeight + ' sh ' + screen.height + ' ch ' + document.documentElement.clientHeight + ' vv ' + (vv ? Math.round(vv.height) : '-') + ' top ' + Math.round(r.top) + ' bot ' + Math.round(innerHeight - r.bottom) + ' st ' + st + ' sa ' + (navigator.standalone ? 1 : 0);
+    document.body.appendChild(d); setTimeout(function () { d.remove(); }, 10000);
+  }, 1500);
+})();
 // Запомненный вход хранит обёртка: внутри iframe iPhone не даёт приложению своё хранилище
 window.addEventListener('message', function (e) {
   if (!/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin) || !e.data || e.data.k1 !== 1) return;
