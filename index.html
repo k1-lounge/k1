@@ -26,12 +26,11 @@ iframe{position:fixed;left:0;top:env(safe-area-inset-top,0px);width:100%;height:
 <div id="safe"></div>
 <iframe id="app" allow="clipboard-write" title="K1 hookah lounge"></iframe>
 <script>
-// iPhone с иконки: приложение ставим ниже часов/«брови», а высоту считаем от экрана целиком
-// (в этом режиме iOS иногда даёт окно короче экрана — отсюда была полоса снизу).
+// iPhone с иконки: приложение ставим ниже часов/«брови» и растягиваем на видимую высоту.
 var ifr = document.getElementById('app'), safe = document.getElementById('safe');
 function fit() {
   var t = Math.max(0, Math.round(safe.getBoundingClientRect().top));
-  var H = navigator.standalone ? Math.max(window.innerHeight, screen.height) : window.innerHeight;
+  var H = window.innerHeight;   // только видимая часть: всё, что ниже, iPhone обрезает (не было видно кнопок в окнах)
   ifr.style.top = t + 'px'; ifr.style.height = (H - t) + 'px';
   return t;
 }
