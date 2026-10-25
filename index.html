@@ -23,7 +23,9 @@ iframe{position:fixed;top:env(safe-area-inset-top,0px);left:env(safe-area-inset-
   width:calc(100% - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));
   height:calc(100% - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
   border:0;display:block;background:#181818}
-#st{position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none}   /* высота строки с часами — для проверки в fit() */
+#st,#sb{position:fixed;left:0;width:1px;visibility:hidden;pointer-events:none}
+#st{top:0;height:env(safe-area-inset-top,0px)}#sb{bottom:0;height:env(safe-area-inset-bottom,0px)}
+#diag{position:fixed;left:0;right:0;bottom:4px;text-align:center;font:9px -apple-system,system-ui,sans-serif;color:#5a5a5a;pointer-events:none}
 .wait{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#d2cdbf;font:15px -apple-system,system-ui,sans-serif;pointer-events:none;transition:opacity .3s}
 .wait img{width:120px;height:120px;border-radius:24px}
 </style>
@@ -31,14 +33,14 @@ iframe{position:fixed;top:env(safe-area-inset-top,0px);left:env(safe-area-inset-
 <body>
 <!-- Обёртка K1: своя иконка на экране телефона, внутри приложение Apps Script -->
 <div class="wait" id="wait"><img src="icon-192.png" alt="K1"><span>Загружаю…</span></div>
-<div id="st"></div>
+<div id="st"></div><div id="sb"></div><div id="diag"></div>
 <iframe id="app" allow="clipboard-write" title="K1 hookah lounge"></iframe>
 <script>
 var APP = 'https://script.google.com/macros/s/AKfycbzNnu1UctMaM-4-pzrzjoOdDUrZjQAzf22vXoosDZeilK6izq5mPDH9bAw3vqiNGPz7/exec';
 var ORIGIN = /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/;
 
 // Версия обёртки: GitHub отдаёт страницу из кэша до 10 минут, поэтому при открытии сверяемся с сайтом
-var WRAP_VER = '2026-10-25.2';
+var WRAP_VER = '2026-10-25.3';
 try {
   fetch('version.txt?nc=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (v) {
     v = (v || '').trim();
@@ -53,9 +55,8 @@ var ifr = document.getElementById('app');
 var IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function standalone(h) {
   if (navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches) return true;
-  // запасной признак: страница на весь экран (или короче ровно на строку с часами — известная ошибка iOS)
-  var top = document.getElementById('st').offsetHeight;
-  return Math.abs(window.innerHeight - h) <= 2 || (top > 0 && Math.abs(window.innerHeight + top - h) <= 2);
+  // запасной признак: страница почти на весь экран (в iOS с иконки высота короче экрана на строку с часами)
+  return window.innerHeight >= h - 70;
 }
 function fit() {
   if (!IOS) return;
@@ -63,11 +64,21 @@ function fit() {
   var a = Math.max(screen.width, screen.height), b = Math.min(screen.width, screen.height);
   var w = land ? a : b, h = land ? b : a;
   if (!standalone(h)) return;   // только iPhone/iPad, открытый с иконки
-  if (Math.abs(window.innerWidth - w) > 2) return;   // не на весь экран (iPad в окне) — остаётся 100%
+  if (Math.abs(window.innerWidth - w) > 8) return;   // не на весь экран (iPad в окне) — остаётся 100%
   ifr.style.height = 'calc(' + h + 'px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))';
+  FIT = 1;
+}
+// Проверка на телефоне: если внизу осталась полоса — в ней видно, что сообщает iOS (потом уберём)
+var FIT = 0;
+function diag() {
+  var d = document.getElementById('diag'); if (!d) return;
+  var r = ifr.getBoundingClientRect();
+  d.textContent = 'v' + WRAP_VER.slice(-2) + ' ih' + window.innerHeight + ' iw' + window.innerWidth + ' sh' + screen.height + ' sw' + screen.width +
+    ' st' + document.getElementById('st').offsetHeight + ' sb' + document.getElementById('sb').offsetHeight + ' ns' + (navigator.standalone === true ? 1 : 0) +
+    ' dm' + (window.matchMedia('(display-mode: standalone)').matches ? 1 : 0) + ' fit' + FIT + ' f' + Math.round(r.top) + '-' + Math.round(r.bottom);
 }
 fit();
-setTimeout(fit, 300); setTimeout(fit, 1200);   // iOS сообщает вырезы не сразу
+setTimeout(fit, 300); setTimeout(function () { fit(); diag(); }, 1200);   // iOS сообщает вырезы не сразу
 window.addEventListener('load', fit);
 window.addEventListener('resize', fit);
 window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
