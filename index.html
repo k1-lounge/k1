@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>K1 hookah lounge</title>
-<meta name="theme-color" content="#1c1c1c">
+<meta name="theme-color" content="#181818">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="K1">
@@ -13,15 +13,16 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="manifest" href="manifest.json">
 <style>
-/* Любой телефон: страница на весь экран (viewport-fit=cover), приложение тоже на весь экран,
-   а вырезы (чёлка/«бровь», полоска «домой») приложение обходит само по env(safe-area-inset-*),
-   которые обёртка ему передаёт. +inset-top — известная поправка iOS: с прозрачной строкой
-   состояния 100% высоты короче экрана ровно на эту строку (отсюда была полоса снизу). */
-html{min-height:calc(100% + env(safe-area-inset-top,0px));background:#1c1c1c}
-body{margin:0;overflow:hidden;background:#1c1c1c}
-iframe{position:fixed;top:0;left:0;width:100%;height:calc(100% + env(safe-area-inset-top,0px));border:0;display:block;background:#1c1c1c}
-#st,#sb{position:fixed;left:0;width:1px;visibility:hidden;pointer-events:none}
-#st{top:0;height:env(safe-area-inset-top,0px)}#sb{bottom:0;height:env(safe-area-inset-bottom,0px)}
+/* Любой телефон: страница на весь экран (viewport-fit=cover), а приложение — только в безопасной
+   части: под часы, «бровь», вырезы и полоску «домой» его не пускаем, эти поля залиты цветом фона.
+   env(safe-area-inset-*) телефон пересчитывает сам, поэтому не важно, в какой момент iOS их сообщит
+   (раньше вырезы мерились при запуске, иногда получался 0 — и шапка уезжала под часы). */
+html,body{height:100%;background:#181818}
+body{margin:0;overflow:hidden}
+iframe{position:fixed;top:env(safe-area-inset-top,0px);left:env(safe-area-inset-left,0px);
+  width:calc(100% - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));
+  height:calc(100% - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+  border:0;display:block;background:#181818}
 .wait{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:#d2cdbf;font:15px -apple-system,system-ui,sans-serif;pointer-events:none;transition:opacity .3s}
 .wait img{width:120px;height:120px;border-radius:24px}
 </style>
@@ -29,14 +30,13 @@ iframe{position:fixed;top:0;left:0;width:100%;height:calc(100% + env(safe-area-i
 <body>
 <!-- Обёртка K1: своя иконка на экране телефона, внутри приложение Apps Script -->
 <div class="wait" id="wait"><img src="icon-192.png" alt="K1"><span>Загружаю…</span></div>
-<div id="st"></div><div id="sb"></div>
 <iframe id="app" allow="clipboard-write" title="K1 hookah lounge"></iframe>
 <script>
 var APP = 'https://script.google.com/macros/s/AKfycbzNnu1UctMaM-4-pzrzjoOdDUrZjQAzf22vXoosDZeilK6izq5mPDH9bAw3vqiNGPz7/exec';
 var ORIGIN = /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/;
 
 // Версия обёртки: GitHub отдаёт страницу из кэша до 10 минут, поэтому при открытии сверяемся с сайтом
-var WRAP_VER = '2026-10-19.4';
+var WRAP_VER = '2026-10-25.1';
 try {
   fetch('version.txt?nc=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (v) {
     v = (v || '').trim();
@@ -44,18 +44,26 @@ try {
   }).catch(function () {});
 } catch (e) {}
 
-// Вырезы экрана этого телефона (внутри iframe приложение их не видит)
 var ifr = document.getElementById('app');
-function insets() {   // высоты блоков в env(safe-area-inset-top/bottom) = размеры вырезов
-  return { st: Math.round(document.getElementById('st').offsetHeight), sb: Math.round(document.getElementById('sb').offsetHeight) };
+// iPhone с иконки на экране: 100% высоты в разных iOS то короче экрана на строку с часами,
+// то ровно экран (с прежней поправкой низ уезжал за край). Поэтому высоту берём от самого экрана.
+function fit() {
+  if (navigator.standalone !== true) return;   // только iPhone/iPad, открытый с иконки
+  var land = window.matchMedia('(orientation: landscape)').matches;
+  var a = Math.max(screen.width, screen.height), b = Math.min(screen.width, screen.height);
+  var w = land ? a : b, h = land ? b : a;
+  if (Math.abs(window.innerWidth - w) > 2) return;   // не на весь экран (iPad в окне) — остаётся 100%
+  ifr.style.height = 'calc(' + h + 'px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))';
 }
-var appWin = null;   // окно приложения (узнаём по первому сообщению)
-function sendInsets() { if (appWin) try { var i = insets(); appWin.postMessage({ k1: 1, op: 'insets', st: i.st, sb: i.sb }, '*'); } catch (e) {} }
-window.addEventListener('resize', sendInsets);
-window.addEventListener('orientationchange', function () { setTimeout(sendInsets, 300); });
+fit();
+window.addEventListener('resize', fit);
+window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
 
-var i0 = insets();
-ifr.src = APP + '?st=' + i0.st + '&sb=' + i0.sb;
+// Вырезы обходит обёртка, поэтому приложению отступы не нужны: всегда 0
+// (старые версии приложения ждут их параметрами и сообщением)
+var appWin = null;   // окно приложения (узнаём по первому сообщению)
+function sendInsets() { if (appWin) try { appWin.postMessage({ k1: 1, op: 'insets', st: 0, sb: 0 }, '*'); } catch (e) {} }
+ifr.src = APP + '?st=0&sb=0';
 ifr.onload = function () { var w = document.getElementById('wait'); w.style.opacity = 0; setTimeout(function () { w.remove(); }, 400); };
 
 // Связь с приложением: вырезы, запомненный вход (хранилище iPhone внутри iframe не живёт), перезагрузка
